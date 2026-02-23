@@ -13,6 +13,12 @@ return {
 		"vim-fugitive",
 		for_cat = "git",
 		after = function()
+			--[[
+      --  Remove linematch as it was causing issues with the diff view in fugitive, see:
+      --  https://github.com/neovim/neovim/issues/22696#issuecomment-3906586437
+      --]]
+			vim.opt.diffopt:remove("linematch:40")
+
 			local Fugitive = {}
 
 			local function is_fugitive_buf(bufnr)
