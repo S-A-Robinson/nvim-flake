@@ -76,7 +76,7 @@ return {
 				extensions = (function()
 					local extensions = {}
 
-					if nixCats("mcphub") then
+					if nixCats("codecompanion") then
 						extensions.mcphub = {
 							callback = "mcphub.extensions.codecompanion",
 							opts = {
