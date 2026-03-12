@@ -7,8 +7,7 @@ vim.opt.tabstop = 2
 vim.opt.shiftwidth = 2
 -- set numbers enabled
 vim.opt.number = true
--- disable relative numbers
-vim.opt.relativenumber = false
+vim.opt.relativenumber = true
 vim.opt.cursorline = true
 vim.opt.wrap = false
 vim.opt.undofile = true
