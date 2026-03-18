@@ -1,16 +1,17 @@
 return {
 	{
 		"vim-dadbod",
-		for_cat = "dadbob",
+		for_cat = "dadbod",
 		dep_of = { "vim-dadbod-ui" },
 	},
 	{
 		"vim-dadbod-completion",
-		for_cat = "dadbob",
+		for_cat = "dadbod",
 		dep_of = { "vim-dadbod-ui" },
 	},
 	{
 		"vim-dadbod-ui",
+		for_cat = "dadbod",
 		dep_of = (function()
 			local deps = {}
 
