@@ -6,10 +6,6 @@ return {
 	lazy = false,
 	after = function()
 		require("catppuccin").setup({
-			background = {
-				light = "mocha",
-				dark = "mocha",
-			},
 			integrations = {
 				blink_cmp = true,
 				dap = true,
