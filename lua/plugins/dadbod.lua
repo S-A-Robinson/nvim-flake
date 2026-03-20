@@ -1,16 +1,16 @@
 return {
 	{
 		"vim-dadbod",
-		for_cat = "dadbob",
-		dep_of = { "vim-dadbod-ui" },
+		for_cat = "dadbod",
 	},
 	{
 		"vim-dadbod-completion",
-		for_cat = "dadbob",
-		dep_of = { "vim-dadbod-ui" },
+		for_cat = "dadbod",
+		dep_of = { "vim-dadbod" },
 	},
 	{
 		"vim-dadbod-ui",
+		for_cat = "dadbod",
 		dep_of = (function()
 			local deps = {}
 
@@ -37,6 +37,9 @@ return {
 			},
 		},
 		after = function()
+			-- Trigger the load of vim-dadbod to ensure it's available when DBUI is loaded
+			require("lze").trigger_load("vim-dadbod")
+
 			-- Your DBUI configuration
 			vim.g.db_ui_use_nerd_fonts = 1
 		end,
