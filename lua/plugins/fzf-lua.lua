@@ -133,6 +133,20 @@ return {
 			desc = "fzf-lua: lsp workspace symbols",
 		})
 
+		-- search in project for word under cursor
+		vim.keymap.set("n", "<leader>fw", function()
+			local word = vim.fn.expand("<cword>")
+			print("Searching for word under cursor: " .. word)
+			fzf.live_grep({
+				search = word,
+				hidden = true,
+				no_ignore = true,
+				rg_opts = "--column --line-number -g '!**/{.git,dist,vendor,node_modules,coverage,.next,.nx,storage/runtime,storage/logs,storage/backups,storage/composer-backups,.devenv,.direnv,.moon/cache}/**'",
+			})
+		end, {
+			desc = "fzf-lua: live grep word under cursor",
+		})
+
 		-- Undo history (built into fzf-lua)
 		vim.keymap.set("n", "<leader>fu", function()
 			require("modules.fzf.undo").undo()
