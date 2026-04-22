@@ -381,6 +381,7 @@ let
           flash = true;
           fzf-lua = true;
           github = true;
+          gitsigns = true;
           glance = true;
           grug-far = true;
           hydra = true;
