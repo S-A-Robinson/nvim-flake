@@ -66,7 +66,7 @@ let
       lspsAndRuntimeDeps = {
         general = with pkgs; [
           perl5Packages.NeovimExt
-          python314Packages.pynvim
+          python315Packages.pynvim
           neovim-node-client
           ripgrep
           fzf
@@ -88,6 +88,7 @@ let
         lsp = with pkgs; [
           lua-language-server
           typescript-language-server
+          typescript-go
           yaml-language-server
           vscode-langservers-extracted
           nixd
@@ -97,6 +98,7 @@ let
           shopify-cli
           intelephense
           laravel-ls
+          tombi
         ];
 
         sops = with pkgs; [
@@ -213,10 +215,10 @@ let
           neovimPlugins.blink-emoji-nvim
         ];
         camelcase = pkgs.vimPlugins.camelcasemotion;
-        codecompanion = with pkgs.vimPlugins; [
+        codecompanion = with pkgs.neovimPlugins; [
           codecompanion-nvim
           codecompanion-history-nvim
-          pkgs.neovimPlugins.mcphub-nvim
+          mcphub-nvim
         ];
         colorizer = pkgs.vimPlugins.nvim-colorizer-lua;
         conform = pkgs.vimPlugins.conform-nvim;
@@ -237,12 +239,15 @@ let
         ];
         dropbar = pkgs.neovimPlugins.dropbar-nvim;
         flash = pkgs.vimPlugins.flash-nvim;
-        fzf-lua = pkgs.vimPlugins.fzf-lua;
+        fzf-lua = pkgs.neovimPlugins.fzf-lua;
         github = pkgs.neovimPlugins.octo-nvim;
         glance = pkgs.vimPlugins.glance-nvim;
         grug-far = pkgs.vimPlugins.grug-far-nvim;
         hydra = pkgs.vimPlugins.hydra-nvim;
-        incline = pkgs.vimPlugins.incline-nvim;
+        incline = with pkgs.vimPlugins; [
+          incline-nvim
+          nvim-web-devicons
+        ];
         kulala = pkgs.vimPlugins.kulala-nvim;
         latex = pkgs.vimPlugins.vimtex;
         lualine =
@@ -349,7 +354,7 @@ let
           # IMPORTANT:
           # your alias may not conflict with your other packages.
           aliases = [ "vim" ];
-          # neovim-unwrapped = inputs.neovim-nightly-overlay.packages.${pkgs.stdenv.hostPlatform.system}.neovim;
+          neovim-unwrapped = inputs.neovim-nightly-overlay.packages.${pkgs.stdenv.hostPlatform.system}.neovim;
         };
         # and a set of categories that you want
         # (and other information to pass to lua)
@@ -412,7 +417,7 @@ let
           trouble = true;
           typst = true;
           ufo = true;
-          vectorcode = true;
+          vectorcode = false;
           which-key = true;
           window-management = true;
           yaml-schema-crds = true;

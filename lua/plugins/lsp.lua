@@ -10,7 +10,18 @@ local on_attach = function(client, bufnr)
 	end
 
 	nmap("<leader>rn", vim.lsp.buf.rename, "[R]e[n]ame")
-	nmap("<leader>ca", vim.lsp.buf.code_action, "[C]ode [A]ction")
+	nmap("<leader>ca", function()
+		vim.lsp.buf.code_action({
+			context = {
+				only = {
+					"quickfix",
+					"source",
+					"refactor",
+					"notebook",
+				},
+			},
+		})
+	end, "[C]ode [A]ction")
 
 	nmap("gh", vim.lsp.buf.hover, "Show LSP Info")
 	nmap("gd", vim.lsp.buf.definition, "Open LSP Definition")
@@ -18,19 +29,6 @@ local on_attach = function(client, bufnr)
 	nmap("gr", vim.lsp.buf.references, "Show LSP References")
 	nmap("go", vim.lsp.buf.type_definition, "Open Type Definition")
 	nmap("gs", vim.lsp.buf.signature_help, "Open Signature Help")
-
-	-- bind <Esc> to close hover windows globally
-	vim.on_key(function(key)
-		if key == ESC and (vim.fn.mode() == "n" or vim.fn.mode() == "v") then
-			for _, win in ipairs(vim.api.nvim_list_wins()) do
-				local config = vim.api.nvim_win_get_config(win)
-				if config.relative ~= "" then
-					vim.api.nvim_win_close(win, false)
-				end
-			end
-		end
-	end)
-	-- etc...
 end
 
 local lspConfig = function(plugin)
@@ -48,14 +46,70 @@ return {
 		for_cat = "lsp",
 		priority = 50,
 		before = function()
+			-- bind <Esc> to close floating windows globally
+			vim.on_key(function(key)
+				if key == ESC and (vim.fn.mode() == "n" or vim.fn.mode() == "v") then
+					-- let noice tear down its own views (content + border + backdrop)
+					if package.loaded["noice"] then
+						require("noice").cmd("dismiss")
+					end
+
+					for _, win in ipairs(vim.api.nvim_list_wins()) do
+						if vim.api.nvim_win_is_valid(win) then
+							local config = vim.api.nvim_win_get_config(win)
+							-- only close focusable floats; skips decorative overlays like incline.nvim
+							if config.relative ~= "" and config.focusable then
+								pcall(vim.api.nvim_win_close, win, false)
+							end
+						end
+					end
+				end
+			end, vim.api.nvim_create_namespace("close_floats_on_esc"))
+
 			vim.keymap.set("n", "gl", vim.diagnostic.open_float, { desc = "Open LSP diagnostic float" })
-			vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, { desc = "Goto previous LSP Diagnostic" })
-			vim.keymap.set("n", "]d", vim.diagnostic.goto_next, { desc = "Goto next LSP Diagnostic" })
+			vim.keymap.set("n", "[d", function()
+				vim.diagnostic.jump({
+					count = -1,
+					on_jump = function()
+						vim.diagnostic.open_float({
+							scope = "cursor",
+							focus = false,
+						})
+					end,
+				})
+			end, { desc = "Goto previous LSP Diagnostic" })
+			vim.keymap.set("n", "]d", function()
+				vim.diagnostic.jump({
+					count = 1,
+					on_jump = function()
+						vim.diagnostic.open_float({
+							scope = "cursor",
+							focus = false,
+						})
+					end,
+				})
+			end, { desc = "Goto next LSP Diagnostic" })
 
 			vim.lsp.config("*", {
 				-- capabilities = capabilities,
 				on_attach = on_attach,
 			})
+		end,
+		after = function()
+			local function open_lsp_log()
+				local ok, fname = pcall(function()
+					return vim.lsp.log.get_filename()
+				end)
+				if not ok or not fname or fname == "" then
+					vim.notify("nvim-lspconfig: LSP log not available", vim.log.levels.WARN)
+					return
+				end
+				vim.cmd("tabnew " .. vim.fn.fnameescape(fname))
+			end
+
+			vim.api.nvim_create_user_command("LspLog", function(info)
+				return open_lsp_log()
+			end, { nargs = "*", desc = "Open the LSP log file" })
 		end,
 	},
 	{
@@ -116,8 +170,92 @@ return {
 			},
 		},
 	},
+	-- {
+	-- 	"ts_ls",
+	-- 	for_cat = "lsp",
+	-- 	before = function(plugin)
+	-- 		lspConfig(plugin)
+	-- 	end,
+	-- 	load = function(name)
+	-- 		lspEnable(name)
+	-- 	end,
+	-- 	lsp = {
+	-- 		on_attach = function(client, bufnr)
+	-- 			on_attach(client, bufnr)
+	--
+	-- 			-- Enable inlay hints if nvim version is 0.10 or higher
+	-- 			if vim.fn.has("nvim-0.10") == 1 then
+	-- 				vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+	-- 			end
+	--
+	-- 			-- ts_ls provides `source.*` code actions that apply to the whole file. These only appear in
+	-- 			-- `vim.lsp.buf.code_action()` if specified in `context.only`.
+	-- 			vim.api.nvim_buf_create_user_command(bufnr, "LspTypescriptSourceAction", function()
+	-- 				local source_actions = vim.tbl_filter(function(action)
+	-- 					return vim.startswith(action, "source.")
+	-- 				end, client.server_capabilities.codeActionProvider.codeActionKinds)
+	--
+	-- 				vim.lsp.buf.code_action({
+	-- 					context = {
+	-- 						only = source_actions,
+	-- 						diagnostics = {},
+	-- 					},
+	-- 				})
+	-- 			end, {})
+	--
+	-- 			-- Go to source definition command
+	-- 			vim.api.nvim_buf_create_user_command(bufnr, "LspTypescriptGoToSourceDefinition", function()
+	-- 				local win = vim.api.nvim_get_current_win()
+	-- 				local params = vim.lsp.util.make_position_params(win, client.offset_encoding)
+	-- 				client:exec_cmd({
+	-- 					command = "_typescript.goToSourceDefinition",
+	-- 					title = "Go to source definition",
+	-- 					arguments = { params.textDocument.uri, params.position },
+	-- 				}, { bufnr = bufnr }, function(err, result)
+	-- 					if err then
+	-- 						vim.notify("Go to source definition failed: " .. err.message, vim.log.levels.ERROR)
+	-- 						return
+	-- 					end
+	-- 					if not result or vim.tbl_isempty(result) then
+	-- 						vim.notify("No source definition found", vim.log.levels.INFO)
+	-- 						return
+	-- 					end
+	-- 					vim.lsp.util.show_document(result[1], client.offset_encoding, { focus = true })
+	-- 				end)
+	-- 			end, { desc = "Go to source definition" })
+	--
+	-- 			vim.keymap.set("n", "<leader>ir", function()
+	-- 				vim.lsp.buf.code_action({
+	-- 					context = {
+	-- 						diagnostics = {},
+	-- 						---@diagnostic disable-next-line: assign-type-mismatch
+	-- 						only = { "source.removeUnused.ts" },
+	-- 					},
+	-- 					apply = true,
+	-- 				})
+	-- 			end, {
+	-- 				desc = "Remove unused imports",
+	-- 				buffer = bufnr,
+	-- 			})
+	--
+	-- 			vim.keymap.set("n", "<leader>if", function()
+	-- 				vim.lsp.buf.code_action({
+	-- 					context = {
+	-- 						diagnostics = {},
+	-- 						---@diagnostic disable-next-line: assign-type-mismatch
+	-- 						only = { "source.addMissingImports.ts" },
+	-- 					},
+	-- 					apply = true,
+	-- 				})
+	-- 			end, {
+	-- 				desc = "Fix imports",
+	-- 				buffer = bufnr,
+	-- 			})
+	-- 		end,
+	-- 	},
+	-- },
 	{
-		"ts_ls",
+		"tsgo",
 		for_cat = "lsp",
 		before = function(plugin)
 			lspConfig(plugin)
@@ -125,109 +263,66 @@ return {
 		load = function(name)
 			lspEnable(name)
 		end,
-		lsp = {
-			init_options = { hostInfo = "neovim" },
-			cmd = { "typescript-language-server", "--stdio" },
-			filetypes = {
-				"javascript",
-				"javascriptreact",
-				"typescript",
-				"typescriptreact",
-			},
-			root_markers = { "tsconfig.json", "jsconfig.json", "package.json", ".git" },
-			handlers = {
-				-- handle rename request for certain code actions like extracting functions / types
-				["_typescript.rename"] = function(_, result, ctx)
-					local client = assert(vim.lsp.get_client_by_id(ctx.client_id))
-					vim.lsp.util.show_document({
-						uri = result.textDocument.uri,
-						range = {
-							start = result.position,
-							["end"] = result.position,
-						},
-					}, client.offset_encoding)
-					vim.lsp.buf.rename()
-					return vim.NIL
+		lsp = function()
+			local inlay_hints = {
+				parameterNames = { enabled = "literals", suppressWhenArgumentMatchesName = true },
+				parameterTypes = { enabled = false },
+				variableTypes = { enabled = false },
+				propertyDeclarationTypes = { enabled = false },
+				functionLikeReturnTypes = { enabled = false },
+				enumMemberValues = { enabled = false },
+			}
+
+			local format_settings = {
+				tabSize = 2,
+				indentSize = 2,
+				baseIndentSize = 0,
+				convertTabsToSpaces = true,
+			}
+
+			return {
+				settings = {
+					typescript = { inlayHints = inlay_hints, format = format_settings },
+					javascript = { inlayHints = inlay_hints, format = format_settings },
+				},
+				on_attach = function(client, bufnr)
+					on_attach(client, bufnr)
+
+					-- Enable inlay hints if nvim version is 0.10 or higher
+					if vim.fn.has("nvim-0.10") == 1 then
+						vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+					end
+
+					vim.keymap.set("n", "<leader>ir", function()
+						vim.lsp.buf.code_action({
+							context = {
+								diagnostics = {},
+								---@diagnostic disable-next-line: assign-type-mismatch
+								only = { "source.removeUnusedImports" },
+							},
+							apply = true,
+						})
+					end, {
+						desc = "Remove unused imports",
+						buffer = bufnr,
+					})
+
+					vim.keymap.set("n", "<leader>if", function()
+						vim.lsp.buf.code_action({
+							context = {
+								diagnostics = {},
+								---@diagnostic disable-next-line: assign-type-mismatch
+								only = { "source.fixAll" },
+							},
+							apply = true,
+						})
+					end, {
+						desc = "Fix imports",
+						buffer = bufnr,
+					})
 				end,
-			},
-			commands = {
-				["editor.action.showReferences"] = function(command, ctx)
-					local client = assert(vim.lsp.get_client_by_id(ctx.client_id))
-					local file_uri, position, references = unpack(command.arguments)
-
-					local quickfix_items = vim.lsp.util.locations_to_items(references, client.offset_encoding)
-					vim.fn.setqflist({}, " ", {
-						title = command.title,
-						items = quickfix_items,
-						context = {
-							command = command,
-							bufnr = ctx.bufnr,
-						},
-					})
-
-					vim.lsp.util.show_document({
-						uri = file_uri,
-						range = {
-							start = position,
-							["end"] = position,
-						},
-					}, client.offset_encoding)
-
-					vim.cmd("botright copen")
-				end,
-			},
-			on_attach = function(client, bufnr)
-				on_attach(client, bufnr)
-
-				-- Enable inlay hints if nvim version is 0.10 or higher
-				if vim.fn.has("nvim-0.10") == 1 then
-					vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
-				end
-
-				-- ts_ls provides `source.*` code actions that apply to the whole file. These only appear in
-				-- `vim.lsp.buf.code_action()` if specified in `context.only`.
-				vim.api.nvim_buf_create_user_command(bufnr, "LspTypescriptSourceAction", function()
-					local source_actions = vim.tbl_filter(function(action)
-						return vim.startswith(action, "source.")
-					end, client.server_capabilities.codeActionProvider.codeActionKinds)
-
-					vim.lsp.buf.code_action({
-						context = {
-							diagnostics = {},
-							only = source_actions,
-						},
-					})
-				end, {})
-
-				vim.keymap.set("n", "<leader>ir", function()
-					vim.lsp.buf.code_action({
-						context = {
-							diagnostics = {},
-							---@diagnostic disable-next-line: assign-type-mismatch
-							only = { "source.removeUnused.ts" },
-						},
-						apply = true,
-					})
-				end, {
-					desc = "Remove unused imports",
-					buffer = bufnr,
-				})
-
-				vim.keymap.set("n", "<leader>if", function()
-					vim.lsp.buf.code_action({
-						context = {
-							diagnostics = {},
-							---@diagnostic disable-next-line: assign-type-mismatch
-							only = { "source.addMissingImports.ts" },
-						},
-						apply = true,
-					})
-				end, {
-					desc = "Fix imports",
-					buffer = bufnr,
-				})
-			end,
-		},
+			}
+		end,
 	},
 	{
 		"yamlls",
@@ -248,6 +343,12 @@ return {
 						["http://json.schemastore.org/prettierrc"] = ".prettierrc.{yml,yaml}",
 						["http://json.schemastore.org/kustomization"] = "kustomization.{yml,yaml}",
 						["http://json.schemastore.org/chart"] = "Chart.{yml,yaml}",
+					},
+					schemaStore = {
+						enable = true,
+					},
+					kubernetesCRDStore = {
+						enable = true,
 					},
 				},
 			},
@@ -462,6 +563,16 @@ return {
 	},
 	{
 		"laravel_ls",
+		for_cat = "lsp",
+		before = function(plugin)
+			lspConfig(plugin)
+		end,
+		load = function(name)
+			lspEnable(name)
+		end,
+	},
+	{
+		"tombi",
 		for_cat = "lsp",
 		before = function(plugin)
 			lspConfig(plugin)
