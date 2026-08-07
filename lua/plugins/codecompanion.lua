@@ -24,31 +24,12 @@ return {
 				return vim.fn.fnamemodify(absolute_path, ":~:." .. root .. "/")
 			end
 
-			local copilot_adapter = require("codecompanion.adapters").extend("copilot", {
-				schema = {
-					model = {
-						default = "claude-sonnet-5",
-					},
-				},
-			})
-
 			require("codecompanion").setup({
-				adapters = {
-					http = {
-						copilot = function()
-							return copilot_adapter
-						end,
-					},
-				},
 				interactions = {
 					chat = {
-						adapter = "copilot",
-						slash_commands = {
-							["buffer"] = {
-								opts = {
-									provider = "fzf_lua",
-								},
-							},
+						adapter = {
+							name = "copilot",
+							model = "claude-sonnet-5",
 						},
 
 						agents = {
@@ -165,7 +146,7 @@ return {
 							-- Number of days after which chats are automatically deleted (0 to disable)
 							expiration_days = 0,
 							-- Picker interface (auto resolved to a valid picker)
-							picker = "fzf-lua", --- ("telescope", "snacks", "fzf-lua", or "default")
+							picker = "snacks", --- ("telescope", "snacks", "fzf-lua", or "default")
 							---Optional filter function to control which chats are shown when browsing
 							chat_filter = nil, -- function(chat_data) return boolean end
 							-- Customize picker keymaps (optional)
@@ -240,6 +221,14 @@ return {
 
 					return extensions
 				end)(),
+
+				prompt_library = {
+					markdown = {
+						dirs = {
+							vim.fn.getcwd() .. "/.prompts",
+						},
+					},
+				},
 			})
 
 			vim.keymap.set({ "n", "x" }, "<leader>cc", function()
@@ -259,28 +248,13 @@ return {
 			end, { noremap = true, silent = true, desc = "Open the CodeCompanion actions menu" })
 
 			vim.keymap.set({ "n", "x" }, "<leader>cm", function()
-				local models = copilot_adapter.schema.model.choices(copilot_adapter, {
-					async = false,
-				})
-				local model_names = {}
-				for name, _ in pairs(models) do
-					table.insert(model_names, name)
-				end
+				local chat = require("codecompanion.interactions.chat").last_chat()
 
-				local Chat = require("codecompanion").last_chat()
-
-				if not Chat then
+				if not chat then
 					return vim.notify("No chat found", vim.log.levels.ERROR)
 				end
 
-				vim.ui.select(model_names, {
-					prompt = "Select model:",
-				}, function(model)
-					if model then
-						Chat:change_model({ model = model })
-						vim.notify("Model changed to: " .. model)
-					end
-				end)
+				require("codecompanion.interactions.chat.keymaps.change_adapter").select_model(chat)
 			end, { noremap = true, silent = true, desc = "Change the model" })
 
 			vim.keymap.set({ "n", "x" }, "<leader>cb", function()
