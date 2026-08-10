@@ -3,7 +3,7 @@ return {
 	for_cat = "zk",
 	after = function()
 		require("zk").setup({
-			picker = "fzf_lua",
+			picker = "snacks_picker",
 		})
 
 		-- Create a new note after asking for its title.
