@@ -205,6 +205,7 @@ let
 
         abolish = pkgs.vimPlugins.vim-abolish;
         arrow = pkgs.vimPlugins.arrow-nvim;
+        autolist = pkgs.vimPlugins.autolist-nvim;
         autopairs = with pkgs.vimPlugins; [
           nvim-autopairs
           nvim-ts-autotag
@@ -369,6 +370,7 @@ let
 
           abolish = true;
           arrow = true;
+          autolist = true;
           autopairs = true;
           auto-session = true;
           blink = true;
