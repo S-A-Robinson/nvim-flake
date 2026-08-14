@@ -21,6 +21,9 @@ return {
 		import = "plugins.autopairs",
 	},
 	{
+		import = "plugins.auto-list",
+	},
+	{
 		import = "plugins.auto-session",
 	},
 	{
